@@ -33,21 +33,36 @@ pipeline {
         }
       }
     }
-    stage('Build and Push Docker Image') {
-      environment {
-        DOCKER_IMAGE = "abhishekf5/ultimate-cicd:${BUILD_NUMBER}"
-        REGISTRY_CREDENTIALS = credentials('docker-cred')
+stage('Build and Push Docker Image') {
+  environment {
+    DOCKER_IMAGE = "ultimate-cicd:${BUILD_NUMBER}"
+    AWS_ACCOUNT_ID = '767828727718'  // Replace with your AWS Account ID
+    AWS_REGION = 'us-east-1'  // Replace with your AWS Region
+    ECR_REPOSITORY = 'ultimate-cicd'  // Replace with your ECR repository name
+    AWS_CREDENTIALS = credentials('aws-credentials')  // Assuming you have AWS credentials configured in Jenkins
+  }
+  steps {
+    script {
+      // Build the Docker image
+      sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
+      
+      // Tag the Docker image for AWS ECR
+      def ecrImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${BUILD_NUMBER}"
+      sh "docker tag ${DOCKER_IMAGE} ${ecrImage}"
+      
+      // Authenticate Docker with AWS ECR
+      withCredentials([usernamePassword(credentialsId: 'aws-credentials', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+        sh """
+          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+        """
       }
-      steps {
-        script {
-          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
-          def dockerImage = docker.image("${DOCKER_IMAGE}")
-          docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
-            dockerImage.push()
-          }
-        }
-      }
+      
+      // Push the Docker image to AWS ECR
+      sh "docker push ${ecrImage}"
     }
+  }
+}
+
     stage('Update Deployment File') {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
