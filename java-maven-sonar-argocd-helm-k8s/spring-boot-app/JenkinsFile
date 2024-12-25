@@ -14,8 +14,8 @@ pipeline {
     GIT_BRANCH = "main"
     AWS_ACCOUNT_ID = '767828727718' // Replace with your AWS Account ID
     AWS_REGION = 'us-east-1' // AWS Region
-    CODEARTIFACT_DOMAIN = 'your-domain' // Your CodeArtifact domain
-    CODEARTIFACT_REPO = 'your-repository' // Your CodeArtifact repository
+    CODEARTIFACT_DOMAIN = 'ultimate-cicd' // Your CodeArtifact domain
+    CODEARTIFACT_REPO = 'my-repository' // Your CodeArtifact repository
     ARTIFACT_VERSION = "1.0.${BUILD_NUMBER}" // Versioning based on build number
   }
 
@@ -43,7 +43,7 @@ pipeline {
 
     stage('Authenticate Maven with AWS CodeArtifact') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'aws-credentials-id', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+        withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
           sh '''
             aws --version  # Check if AWS CLI is available
             aws codeartifact login --tool maven --domain ${CODEARTIFACT_DOMAIN} --repository ${CODEARTIFACT_REPO} --region ${AWS_REGION}
