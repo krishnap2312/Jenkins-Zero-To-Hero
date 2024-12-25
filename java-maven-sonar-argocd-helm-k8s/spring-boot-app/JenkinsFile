@@ -42,10 +42,15 @@ pipeline {
         AWS_ACCOUNT_ID = '767828727718' // Replace with your AWS Account ID
         AWS_REGION = 'us-east-1' // Replace with your AWS Region
         ECR_REPOSITORY = 'ultimate-cicd' // Replace with your ECR repository name
-        AWS_CREDENTIALS = credentials('aws-credentials') // Assuming you have AWS credentials configured in Jenkins
       }
       steps {
         script {
+          // Install AWS CLI
+          sh '''
+            apt-get update
+            apt-get install -y awscli
+          '''
+
           // Create the ECR repository if it doesn't exist
           sh '''
             aws ecr describe-repositories --repository-name ${ECR_REPOSITORY} --region ${AWS_REGION} || \
