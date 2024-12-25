@@ -16,6 +16,7 @@ pipeline {
     AWS_REGION = 'us-east-1' // Replace with your AWS Region
     ECR_REPOSITORY = 'ultimate-cicd' // Replace with your ECR repository name
     DOCKER_IMAGE = "ultimate-cicd:${BUILD_NUMBER}"
+    REPOSITORY_URI = "767828727718.dkr.ecr.us-east-1.amazonaws.com/ultimate-ci-cd"
   }
 
   stages {
@@ -44,23 +45,23 @@ pipeline {
     stage('AWS ECR Setup and Docker Image Push') {
       steps {
         script {
-          // Display the AWS region and account ID
-          sh 'echo "AWS Region: ${AWS_REGION}"'
-          sh 'echo "AWS Account ID: ${AWS_ACCOUNT_ID}"'
+          // // Display the AWS region and account ID
+          // sh 'echo "AWS Region: ${AWS_REGION}"'
+          // sh 'echo "AWS Account ID: ${AWS_ACCOUNT_ID}"'
 
-          // Check if ECR repository exists, if not create it
-          sh '''
-            echo "Checking if ECR repository exists..."
-            aws ecr describe-repositories --repository-name ${ECR_REPOSITORY} --region ${AWS_REGION} || \
-            (echo "Repository not found, creating repository..." && \
-            aws ecr create-repository --repository-name ${ECR_REPOSITORY} --region ${AWS_REGION})
-          '''
+          // // Check if ECR repository exists, if not create it
+          // sh '''
+          //   echo "Checking if ECR repository exists..."
+          //   aws ecr describe-repositories --repository-name ${ECR_REPOSITORY} --region ${AWS_REGION} || \
+          //   (echo "Repository not found, creating repository..." && \
+          //   aws ecr create-repository --repository-name ${ECR_REPOSITORY} --region ${AWS_REGION})
+          // '''
 
           // Build the Docker image
           sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
 
           // Tag the Docker image for AWS ECR
-          def ecrImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${BUILD_NUMBER}"
+          def ecrImage = "${REPOSITORY_URI}:${BUILD_NUMBER}"
           sh "docker tag ${DOCKER_IMAGE} ${ecrImage}"
 
           // Authenticate Docker with AWS ECR
