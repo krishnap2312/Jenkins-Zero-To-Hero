@@ -44,8 +44,15 @@ pipeline {
     stage('Authenticate Maven with AWS CodeArtifact') {
       steps {
         script {
-          // Authenticate with AWS CodeArtifact using AWS CLI
+          // Install AWS CLI if it's not installed
           sh '''
+            if ! command -v aws &> /dev/null; then
+              echo "AWS CLI not found, installing..."
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              sudo ./aws/install
+              rm -rf awscliv2.zip
+            fi
             aws codeartifact login --tool maven --domain ${CODEARTIFACT_DOMAIN} --repository ${CODEARTIFACT_REPO} --region ${AWS_REGION}
           '''
         }
