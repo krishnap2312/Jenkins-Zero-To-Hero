@@ -43,8 +43,8 @@ pipeline {
 
         stage('Authenticate Maven with AWS CodeArtifact') {
             steps {
-                // Use the correct AWS credentials block for AWS-specific credentials
-                withCredentials([usernamePassword(credentialsId: 'aws-credentials', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                // Use the withAWS block to handle AWS credentials
+                withAWS(credentials: 'aws-credentials') {
                     script {
                         // Get the authorization token from AWS CodeArtifact
                         def authToken = sh(
