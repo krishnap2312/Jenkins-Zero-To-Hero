@@ -43,7 +43,8 @@ pipeline {
 
         stage('Authenticate Maven with AWS CodeArtifact') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                // Use the correct AWS credentials block for AWS-specific credentials
+                withAWSCredentials(credentialsId: 'aws-credentials') {
                     sh '''
                         aws --version  # Check if AWS CLI is available
                         aws codeartifact login --tool maven --domain ${CODEARTIFACT_DOMAIN} --repository ${CODEARTIFACT_REPO} --region ${AWS_REGION}
