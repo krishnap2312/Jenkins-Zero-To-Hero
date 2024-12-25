@@ -28,52 +28,78 @@ pipeline {
     }
     stage('Static Code Analysis') {
       steps {
-        withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_AUTH_TOKEN')]) {
+        withCredentials([string(credentialsId: 'SonarQubeToken', variable: 'SONAR_AUTH_TOKEN')]) {
           sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
         }
       }
     }
-stage('Build and Push Docker Image') {
-  environment {
-    DOCKER_IMAGE = "ultimate-cicd:${BUILD_NUMBER}"
-    AWS_ACCOUNT_ID = '767828727718'  // Replace with your AWS Account ID
-    AWS_REGION = 'us-east-1'  // Replace with your AWS Region
-    ECR_REPOSITORY = 'ultimate-cicd'  // Replace with your ECR repository name
-    AWS_CREDENTIALS = credentials('aws-credentials')  // Assuming you have AWS credentials configured in Jenkins
-  }
-  steps {
-    script {
-      // Build the Docker image
-      sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
-      
-      // Tag the Docker image for AWS ECR
-      def ecrImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${BUILD_NUMBER}"
-      sh "docker tag ${DOCKER_IMAGE} ${ecrImage}"
-      
-      // Authenticate Docker with AWS ECR
-      withCredentials([usernamePassword(credentialsId: 'aws-credentials', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-        sh """
-          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-        """
+    stage('Build and Push Docker Image') {
+      environment {
+        DOCKER_IMAGE = "ultimate-cicd:${BUILD_NUMBER}"
+        AWS_ACCOUNT_ID = '767828727718' // Replace with your AWS Account ID
+        AWS_REGION = 'us-east-1' // Replace with your AWS Region
+        ECR_REPOSITORY = 'ultimate-cicd' // Replace with your ECR repository name
+        AWS_CREDENTIALS = credentials('aws-credentials') // Assuming you have AWS credentials configured in Jenkins
       }
-      
-      // Push the Docker image to AWS ECR
-      sh "docker push ${ecrImage}"
+      steps {
+        script {
+          // Create the ECR repository if it doesn't exist
+          sh ""
+          "
+          aws ecr describe - repositories--repository - name $ {
+              ECR_REPOSITORY
+            }--region $ {
+              AWS_REGION
+            } || \
+            aws ecr create - repository--repository - name $ {
+              ECR_REPOSITORY
+            }--region $ {
+              AWS_REGION
+            }
+          ""
+          "
+
+          // Build the Docker image
+          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
+
+          // Tag the Docker image for AWS ECR
+          def ecrImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${BUILD_NUMBER}"
+          sh "docker tag ${DOCKER_IMAGE} ${ecrImage}"
+
+          // Authenticate Docker with AWS ECR
+          withCredentials([usernamePassword(credentialsId: 'aws-credentials', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+            sh ""
+            "
+            aws ecr get - login - password--region $ {
+              AWS_REGION
+            } | docker login--username AWS--password - stdin $ {
+              AWS_ACCOUNT_ID
+            }.dkr.ecr.$ {
+              AWS_REGION
+            }.amazonaws.com ""
+            "
+          }
+
+          // Push the Docker image to AWS ECR
+          sh "docker push ${ecrImage}"
+        }
+      }
     }
-  }
-}
 
     stage('Update Deployment File') {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-          sh '''
+          sh ''
+          '
           git config user.email "2312krishnap2312@gmail.com"
           git config user.name "krishnap2312"
-          sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app/manifests/deployment.yml
-          git add java-maven-sonar-argocd-helm-k8s/spring-boot-app/manifests/deployment.yml
-          git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-          git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-          '''
+          sed - i "s/replaceImageTag/${BUILD_NUMBER}/g"
+          java - maven - sonar - argocd - helm - k8s / spring - boot - app / manifests / deployment.yml
+          git add java - maven - sonar - argocd - helm - k8s / spring - boot - app / manifests / deployment.yml
+          git commit - m "Update deployment image to version ${BUILD_NUMBER}"
+          git push https: //${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+            ''
+          '
         }
       }
     }
