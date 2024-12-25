@@ -44,11 +44,21 @@ pipeline {
         stage('Authenticate Maven with AWS CodeArtifact') {
             steps {
                 // Use the correct AWS credentials block for AWS-specific credentials
-                withAWSCredentials(credentialsId: 'aws-credentials') {
-                    sh '''
-                        aws --version  # Check if AWS CLI is available
-                        aws codeartifact login --tool maven --domain ${CODEARTIFACT_DOMAIN} --repository ${CODEARTIFACT_REPO} --region ${AWS_REGION}
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'aws-credentials', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                    script {
+                        // Get the authorization token from AWS CodeArtifact
+                        def authToken = sh(
+                            returnStdout: true,
+                            script: 'aws codeartifact get-authorization-token \
+                            --domain ${CODEARTIFACT_DOMAIN} \
+                            --query authorizationToken \
+                            --output text \
+                            --duration-seconds 900'
+                        ).trim()
+
+                        // Set the authToken in environment variable for later stages
+                        env.CODEARTIFACT_AUTH_TOKEN = authToken
+                    }
                 }
             }
         }
@@ -59,7 +69,7 @@ pipeline {
                     // Debugging step to ensure the artifact file exists
                     sh 'ls -l java-maven-sonar-argocd-helm-k8s/spring-boot-app/target/'
 
-                    // Deploy the artifact to CodeArtifact
+                    // Deploy the artifact to CodeArtifact using the authorization token
                     sh '''
                         mvn deploy:deploy-file -X \
                           -DgroupId=com.example \
@@ -68,7 +78,10 @@ pipeline {
                           -Dpackaging=jar \
                           -Dfile=java-maven-sonar-argocd-helm-k8s/spring-boot-app/target/my-artifact-${ARTIFACT_VERSION}.jar \
                           -DrepositoryId=aws-codeartifact \
-                          -Durl=https://aws-codeartifact.${AWS_REGION}.amazonaws.com/maven/${CODEARTIFACT_DOMAIN}/${CODEARTIFACT_REPO}/
+                          -Durl=https://aws-codeartifact.${AWS_REGION}.amazonaws.com/maven/${CODEARTIFACT_DOMAIN}/${CODEARTIFACT_REPO}/ \
+                          -Daws.accessKeyId=${AWS_ACCESS_KEY_ID} \
+                          -Daws.secretAccessKey=${AWS_SECRET_ACCESS_KEY} \
+                          -Daws.sessionToken=${CODEARTIFACT_AUTH_TOKEN} # Pass the auth token here
                     '''
                 }
             }
